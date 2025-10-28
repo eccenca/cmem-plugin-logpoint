@@ -9,6 +9,7 @@ from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginPar
 from cmem_plugin_base.dataintegration.entity import (
     Entities,
 )
+from cmem_plugin_base.dataintegration.parameter.password import Password, PasswordParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 from cmem_plugin_base.dataintegration.ports import (
     FixedNumberOfInputs,
@@ -39,6 +40,7 @@ from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities
         PluginParameter(
             name="secret_key",
             label="Secret Key",
+            param_type=PasswordParameterType(),
         ),
         PluginParameter(
             name="query",
@@ -64,14 +66,14 @@ class RetrieveLogs(WorkflowPlugin):
         self,
         base_url: str,
         account: str,
-        secret_key: str,
+        secret_key: Password | str,
         query: str,
         time_range: str,
         limit: int,
     ) -> None:
         self.base_url = base_url.removesuffix("/")
         self.account = account
-        self.secret_key = secret_key
+        self.secret_key = secret_key if isinstance(secret_key, str) else secret_key.decrypt()
         self.query = query
         self.time_range = time_range
         if limit < 1:
