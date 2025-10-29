@@ -1,11 +1,12 @@
 """Search Logs"""
 
 import json
+import uuid
 from collections.abc import Sequence
 from typing import Any
 
 import requests
-from cmem_plugin_base.dataintegration.context import ExecutionContext
+from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginAction, PluginParameter
 from cmem_plugin_base.dataintegration.entity import (
     Entities,
@@ -13,7 +14,6 @@ from cmem_plugin_base.dataintegration.entity import (
     EntityPath,
     EntitySchema,
 )
-from cmem_plugin_base.dataintegration.parameter.multiline import MultilineStringParameterType
 from cmem_plugin_base.dataintegration.parameter.password import Password, PasswordParameterType
 from cmem_plugin_base.dataintegration.plugins import WorkflowPlugin
 from cmem_plugin_base.dataintegration.ports import (
@@ -21,7 +21,7 @@ from cmem_plugin_base.dataintegration.ports import (
     FixedSchemaPort,
     UnknownSchemaPort,
 )
-from cmem_plugin_base.dataintegration.types import IntParameterType
+from cmem_plugin_base.dataintegration.types import IntParameterType, StringParameterType
 from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities_from_data
 
 
@@ -66,7 +66,11 @@ from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities
         PluginParameter(
             name="paths_list",
             label="List of output paths",
-            param_type=MultilineStringParameterType(),
+            description="Comma seperated list of output paths. If any values are set here,"
+            "the output port will adjust according to those."
+            "Do not leave whitespaces between paths. Use the 'Preview output paths' action "
+            "to see possible values.",
+            param_type=StringParameterType(),
             default_value="",
         ),
     ],
@@ -116,22 +120,21 @@ class RetrieveLogs(WorkflowPlugin):
     def execute(
         self,
         inputs: Sequence[Entities],  # noqa: ARG002
-        context: ExecutionContext,  # noqa: ARG002
+        context: ExecutionContext,
     ) -> Entities:
         """Run the workflow operator."""
         search_id = self.search_start(
             query=self.query, time_range=self.time_range, limit=self.limit, repos=[]
         )
-        results = self.search_retrieve_logs(search_id)
+        results = self.search_retrieve_logs(search_id, context)
 
         if not self.paths_list:
             return build_entities_from_data(results)
 
-        # need to adjust entity_uri
         schema = self.generate_schema()
         entities = []
         for result in results:
-            entity_uri = "test"
+            entity_uri = str(uuid.uuid4())
             values = []
             for path in schema.paths:
                 try:
@@ -141,7 +144,7 @@ class RetrieveLogs(WorkflowPlugin):
             entities.append(Entity(uri=entity_uri, values=values))
         return Entities(entities=iter(entities), schema=schema)
 
-    def search_retrieve_logs(self, search_id: str) -> list[dict]:
+    def search_retrieve_logs(self, search_id: str, context: ExecutionContext | None) -> list[dict]:
         """Get search results for a search id"""
         url = self.base_url + "/getsearchlogs"
         request_data = {
@@ -157,8 +160,9 @@ class RetrieveLogs(WorkflowPlugin):
 
         final = False
         full_response: list[dict[str, Any]] = []
-
+        report_amount_of_pages = 0
         while not final:
+            report_amount_of_pages += 1
             response = requests.post(url=url, data=data, timeout=100)
             response.raise_for_status()
 
@@ -166,6 +170,14 @@ class RetrieveLogs(WorkflowPlugin):
             rows = response_data["rows"]
             full_response.extend(rows)
             final = response_data.get("final", True)
+
+        if context:
+            context.report.update(
+                ExecutionReport(
+                    entity_count=report_amount_of_pages,
+                    operation_desc=f"page{'' if report_amount_of_pages == 1 else 's'} used.",
+                )
+            )
 
         return full_response
 
@@ -210,7 +222,7 @@ class RetrieveLogs(WorkflowPlugin):
         search_id = self.search_start(
             query=self.query, time_range=self.time_range, limit=1, repos=[]
         )
-        results = self.search_retrieve_logs(search_id)
+        results = self.search_retrieve_logs(search_id, None)
         result = results[0]
         for r in result:
             preview_string += f"- {r}\n"
@@ -222,7 +234,6 @@ class RetrieveLogs(WorkflowPlugin):
 
     def generate_schema(self) -> EntitySchema:
         """Generate the specified output schema."""
-        # need to make sure that first of all white spaces get ignored
         return EntitySchema(
             type_uri="test",
             paths=[EntityPath(split_path) for split_path in self.paths_list.split(",")],

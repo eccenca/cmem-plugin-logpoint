@@ -47,7 +47,7 @@ def test_search(search_environment: SearchEnvironment) -> None:
     plugin = search_environment.plugin
     query = '"device_name" = "EKSAuditDevice"'
     search_id = plugin.search_start(repos=[], limit=10, time_range="Last 1 hour", query=query)
-    plugin.search_retrieve_logs(search_id)
+    plugin.search_retrieve_logs(search_id, TestExecutionContext())
 
 
 def test_list_repos(search_environment: SearchEnvironment) -> None:
