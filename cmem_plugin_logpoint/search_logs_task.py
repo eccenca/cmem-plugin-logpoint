@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Sequence
+from typing import Any
 
 import requests
 from cmem_plugin_base.dataintegration.context import ExecutionContext
@@ -107,9 +108,21 @@ class RetrieveLogs(WorkflowPlugin):
             "secret_key": self.secret_key,
             "requestData": json.dumps(request_data),
         }
-        response = requests.post(url=url, data=data, timeout=100)
-        rows: list[dict] = response.json()["rows"]
-        return rows
+
+        final = False
+        full_response: list[dict[str, Any]] = []
+
+        while not final:
+            response = requests.post(url=url, data=data, timeout=100)
+            response.raise_for_status()
+
+            response_data = response.json()
+            print(response_data.get("final"))
+            rows = response_data["rows"]
+            full_response.extend(rows)
+            final = response_data.get("final", True)
+
+        return full_response
 
     def search_start(self, repos: list[str], limit: int, time_range: str, query: str) -> str:
         """Start a search and get a search ID"""
@@ -128,3 +141,17 @@ class RetrieveLogs(WorkflowPlugin):
         response = requests.post(url=url, data=data, timeout=100)
         search_id: str = response.json()["search_id"]
         return search_id
+
+    def list_repositories(self) -> None:
+        """List all repositories available in the logpoint service.
+
+        Currently, this is not working as a JSON Web Token (JWT) is needed for this.
+        It returns 200 but is not successful in retrieving the data.
+        """
+        url = self.base_url + "/Repo/get_all_searchable_logpoint"
+        data = {
+            "username": self.account,
+            "secret_key": self.secret_key,
+        }
+        headers = {"Content-Type": "application/json"}
+        requests.post(url=url, data=data, headers=headers, timeout=100)
