@@ -158,28 +158,22 @@ class RetrieveLogs(WorkflowPlugin):
             "requestData": json.dumps(request_data),
         }
 
-        final = False
-        full_response: list[dict[str, Any]] = []
-        report_amount_of_pages = 0
-        while not final:
-            report_amount_of_pages += 1
+        response = requests.post(url=url, data=data, timeout=100)
+        response.raise_for_status()
+        response_data = response.json()
+
+        while response_data["final"] is False:
             response = requests.post(url=url, data=data, timeout=100)
             response.raise_for_status()
-
             response_data = response.json()
-            rows = response_data["rows"]
-            full_response.extend(rows)
-            final = response_data.get("final", True)
 
         if context:
             context.report.update(
-                ExecutionReport(
-                    entity_count=report_amount_of_pages,
-                    operation_desc=f"page{'' if report_amount_of_pages == 1 else 's'} used.",
-                )
+                ExecutionReport(entity_count=(response_data["totalPages"]), operation_desc="pages.")
             )
 
-        return full_response
+        rows: list[dict[str, Any]] = response_data["rows"]
+        return rows
 
     def search_start(self, repos: list[str], limit: int, time_range: str, query: str) -> str:
         """Start a search and get a search ID"""
