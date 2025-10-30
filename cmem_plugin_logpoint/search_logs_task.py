@@ -181,12 +181,16 @@ class RetrieveLogs(WorkflowPlugin):
             response.raise_for_status()
             response_data = response.json()
 
+        rows: list[dict[str, Any]] = response_data["rows"]
+
         if context:
             context.report.update(
-                ExecutionReport(entity_count=(response_data["totalPages"]), operation_desc="pages.")
+                ExecutionReport(
+                    entity_count=(response_data["totalPages"]),
+                    operation_desc=f"pages were used and {len(rows)} entities created.",
+                )
             )
 
-        rows: list[dict[str, Any]] = response_data["rows"]
         return rows
 
     def search_start(self, repos: list[str], limit: int, time_range: str, query: str) -> str:
@@ -208,11 +212,7 @@ class RetrieveLogs(WorkflowPlugin):
         return search_id
 
     def list_repositories(self, context: ExecutionContext) -> None:
-        """List all repositories available in the logpoint service.
-
-        Currently, this is not working as a JSON Web Token (JWT) is needed for this.
-        It returns 200 but is not successful in retrieving the data.
-        """
+        """List all repositories available in the logpoint service."""
         url = self.base_url + "/Repo/get_all_searchable_logpoint"
         data = {
             "username": self.account,
@@ -238,7 +238,18 @@ class RetrieveLogs(WorkflowPlugin):
 
     def preview_repositories(self) -> str:
         """Preview repositories"""
-        return "Not yet implemented"
+        url = self.base_url + "/getalloweddata"
+
+        data = {"username": self.account, "secret_key": self.secret_key, "type": "logpoint_repos"}
+
+        response = requests.post(url=url, data=data, timeout=100)
+        response_data = response.json()
+        allowed_repos = response_data["allowed_repos"]
+        preview_string = ""
+        for repo in allowed_repos:
+            preview_string += f"- {(repo['repo'])}\n"
+
+        return preview_string
 
     def generate_schema(self) -> EntitySchema:
         """Generate the specified output schema."""

@@ -31,7 +31,7 @@ def search_environment() -> SearchEnvironment:
         secret_key=secret_key,
         query="",
         time_range="Last 1 hour",
-        limit=1,
+        limit=100,
         repos="",
         paths_list="",
     )
@@ -53,6 +53,9 @@ def test_search(search_environment: SearchEnvironment) -> None:
 
 def test_list_repos(search_environment: SearchEnvironment) -> None:
     """Test start search"""
+    plugin = search_environment.plugin
+    preview = plugin.preview_repositories()
+    assert "EKSAuditLog" in preview
 
 
 def test_preview_output_paths(search_environment: SearchEnvironment) -> None:
@@ -83,3 +86,7 @@ def test_plugin_with_output_specified() -> None:
 
     assert len(result.schema.paths) == len(plugin.paths_list.split(","))
     assert len(list(result.entities)) > 0
+
+
+def test_repo_specific_query(search_environment: SearchEnvironment) -> None:
+    """Test repo specific query"""
