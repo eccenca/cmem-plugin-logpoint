@@ -31,7 +31,8 @@ def search_environment() -> SearchEnvironment:
         secret_key=secret_key,
         query="",
         time_range="Last 1 hour",
-        limit=10000,
+        limit=1,
+        repos="",
         paths_list="",
     )
     return SearchEnvironment(
@@ -75,6 +76,7 @@ def test_plugin_with_output_specified() -> None:
         query="| chart count() by device_ip",
         time_range="Last 15 minutes",
         limit=10,
+        repos="",
         paths_list="_type_str,count()",
     )
     result = plugin.execute(inputs=[], context=TestExecutionContext())

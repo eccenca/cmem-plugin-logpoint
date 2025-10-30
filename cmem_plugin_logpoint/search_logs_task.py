@@ -36,32 +36,44 @@ from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities
         PluginParameter(
             name="base_url",
             label="Service URL",
+            description="The base URL of the service.",
             default_value="https://demo.logpoint.com/",
         ),
         PluginParameter(
             name="account",
             label="Username",
             default_value="partner",
+            description="The username of the service account.",
         ),
         PluginParameter(
             name="secret_key",
             label="Secret Key",
             param_type=PasswordParameterType(),
+            description="The secret key of the service account.",
         ),
         PluginParameter(
             name="query",
             label="Query",
+            description="The query to search logs.",
         ),
         PluginParameter(
             name="time_range",
             label="Time Range",
             default_value="Last 1 hour",
+            description="The time range to search logs.",
         ),
         PluginParameter(
             name="limit",
             label="Limit",
             param_type=IntParameterType(),
             default_value=1000,
+            description="The number of logs to return.",
+        ),
+        PluginParameter(
+            name="repos",
+            label="Repositories",
+            description="Comma seperated list of repositories the query searches for.",
+            default_value="",
         ),
         PluginParameter(
             name="paths_list",
@@ -99,6 +111,7 @@ class RetrieveLogs(WorkflowPlugin):
         query: str,
         time_range: str,
         limit: int,
+        repos: str,
         paths_list: str,
     ) -> None:
         self.base_url = base_url.removesuffix("/")
@@ -109,6 +122,7 @@ class RetrieveLogs(WorkflowPlugin):
         if limit < 1:
             raise ValueError("Limit must be positive.")
         self.limit = limit
+        self.repos = repos.split(",") if repos else []
         self.paths_list = paths_list
         self.input_ports = FixedNumberOfInputs(ports=[])
         self.output_port = (
@@ -124,7 +138,7 @@ class RetrieveLogs(WorkflowPlugin):
     ) -> Entities:
         """Run the workflow operator."""
         search_id = self.search_start(
-            query=self.query, time_range=self.time_range, limit=self.limit, repos=[]
+            query=self.query, time_range=self.time_range, limit=self.limit, repos=self.repos
         )
         results = self.search_retrieve_logs(search_id, context)
 
@@ -214,7 +228,7 @@ class RetrieveLogs(WorkflowPlugin):
         """Preview output paths"""
         preview_string = ""
         search_id = self.search_start(
-            query=self.query, time_range=self.time_range, limit=1, repos=[]
+            query=self.query, time_range=self.time_range, limit=1, repos=self.repos
         )
         results = self.search_retrieve_logs(search_id, None)
         result = results[0]
