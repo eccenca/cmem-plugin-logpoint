@@ -72,31 +72,34 @@ to search and retrieve log data based on custom queries.
 ## Configuration
 
 ### Authentication
+
 Configure the connection to your Logpoint service using:
 - **Service URL**: The base URL of your Logpoint instance
 - **Username**: Service account username with appropriate permissions
 - **Secret Key**: API secret key for authentication
 
 ### Query Parameters
+
 - **Query**: Logpoint search query syntax (see Logpoint documentation TODO ADD LINK)
-- **Time Range**: Relative time range (e.g., "Last 1 hour", "Last 24 hours")
+- **Time Range**: Relative time range (e.g., `Last 1 hour`, `Last 24 hours`)
 - **Limit**: Maximum number of log entries to retrieve
 - **Repositories**: Optional comma-separated list of specific repositories to search
 
 ### Output Schema
+
 - **List of output paths**: Define specific fields to extract from logs
-- Use the "Preview output paths" action to discover possible, available fields
+- Use the **Preview output paths** action to discover possible, available fields
 - Leave empty to return all fields with automatic schema detection
 - Format: comma-separated paths
 - **Note:** It may occur that not all possible output paths are listed here. Logpoint follows
-standardized field naming conventions documented at:
-https://docs.logpoint.com/docs/logpoint-taxonomy-guideline/en/latest/Field%20naming%20convention.html
-A warning will be given if at least one of the created entities does not have a value at the given
-path.
+  a [standardized field naming convention](https://docs.logpoint.com/docs/logpoint-taxonomy-guideline/en/latest/Field%20naming%20convention.html).
+  A warning will be given if at least one of the created entities does not have a value at the
+  given path.
 
 ## Usage Example
 
 ### Basic Log Search
+
 - Query: `norm_id=*`
 - Time Range: `Last 1 hour`
 - Limit: `1000`
@@ -113,8 +116,8 @@ Common fields include:
 ## Actions
 
 Use the plugin actions to explore and configure your searches:
-- **Preview output paths**: Run a test query to see available field paths
-- **Preview repositories**: List all accessible log repositories in your Logpoint instance
+- **Preview output paths**: Executes a test query to see available field paths.
+- **Preview repositories**: List all accessible log repositories in your Logpoint instance.
 """,
     icon=Icon(package=__package__, file_name="logpoint.svg"),
     parameters=[
@@ -321,14 +324,18 @@ class RetrieveLogs(WorkflowPlugin):
 
     def preview_output_paths(self) -> str:
         """Preview output paths"""
-        preview_string = ""
         search_id = self.search_start(
             query=self.query, time_range=self.time_range, limit=1, repos=self.repos
         )
         results = self.search_retrieve_logs(search_id)
         result = results[0]
-        for r in result:
-            preview_string += f"- {r}\n"
+        path_list = list(result.keys())
+        path_count = len(path_list)
+        preview_string = (
+            f"The following {path_count} output paths were returned using the current query:\n\n"
+        )
+        for path in path_list:
+            preview_string += f"- {path},\n" if path_list[-1] != path else f"- {path}\n"
         return preview_string
 
     def preview_repositories(self) -> str:
@@ -340,9 +347,11 @@ class RetrieveLogs(WorkflowPlugin):
         response = requests.post(url=url, data=data, timeout=100)
         response_data = response.json()
         allowed_repos = response_data["allowed_repos"]
-        preview_string = ""
-        for repo in allowed_repos:
-            preview_string += f"- {(repo['repo'])}\n"
+        repo_list = [repo["repo"] for repo in allowed_repos]
+        repo_count = len(repo_list)
+        preview_string = f"The following {repo_count} repositories are accessible:\n\n"
+        for repo in repo_list:
+            preview_string += f"- {repo},\n" if repo_list[-1] != repo else f"- {repo}\n"
 
         return preview_string
 
