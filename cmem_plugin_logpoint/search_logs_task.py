@@ -261,6 +261,7 @@ class RetrieveLogs(WorkflowPlugin):
             for path in schema.paths:
                 try:
                     values.append([str(result[path.path])])
+                    entities.append(Entity(uri=entity_uri, values=values))
                 except KeyError:
                     values.append([""])
                     warning_occurred = True
@@ -314,19 +315,6 @@ class RetrieveLogs(WorkflowPlugin):
         response = requests.post(url=url, data=data, timeout=100)
         search_id: str = response.json()["search_id"]
         return search_id
-
-    def list_repositories(self, context: ExecutionContext) -> None:
-        """List all repositories available in the logpoint service."""
-        url = self.base_url + "/Repo/get_all_searchable_logpoint"
-        data = {
-            "username": self.account,
-            "secret_key": self.secret_key,
-        }
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {context.user.token()}",
-        }
-        requests.post(url=url, data=data, headers=headers, timeout=100)
 
     def preview_output_paths(self) -> str:
         """Preview output paths"""
