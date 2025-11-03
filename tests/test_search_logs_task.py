@@ -95,6 +95,14 @@ def test_plugin_with_output_and_warning(search_environment: SearchEnvironment) -
     assert len(list(result.entities)) > 0
 
 
+def test_broken_query(search_environment: SearchEnvironment) -> None:
+    """Test broken query"""
+    plugin = search_environment.plugin
+    plugin.repos = ["this does not work"]
+    with pytest.raises(KeyError, match=r"No search_id was found due to the query being incorrect."):
+        plugin.execute(inputs=[], context=TestExecutionContext())
+
+
 def test_preview_output_paths(search_environment: SearchEnvironment) -> None:
     """Test preview action to show output paths"""
     plugin = search_environment.plugin

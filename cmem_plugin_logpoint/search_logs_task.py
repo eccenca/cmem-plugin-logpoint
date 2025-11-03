@@ -313,7 +313,10 @@ class RetrieveLogs(WorkflowPlugin):
             "requestData": json.dumps(request_data),
         }
         response = requests.post(url=url, data=data, timeout=100)
-        search_id: str = response.json()["search_id"]
+        try:
+            search_id: str = response.json()["search_id"]
+        except KeyError as e:
+            raise KeyError("No search_id was found due to the query being incorrect.") from e
         return search_id
 
     def preview_output_paths(self) -> str:
