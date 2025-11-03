@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD012 MD013 MD024 MD033 -->
 # Change Log
 
 All notable changes to this project will be documented in this file.
@@ -8,5 +9,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ### Added
 
-- initial version
+- initial version of the Search Logs task
+  - Service URL, Account and token parameter for authn
+  - Query, Time Range, Limit and Repositories parameter for limiting search scope and result
+  - List of output paths paramter to specify the output schema
 
