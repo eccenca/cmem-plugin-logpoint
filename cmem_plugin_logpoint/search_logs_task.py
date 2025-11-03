@@ -25,63 +25,158 @@ from cmem_plugin_base.dataintegration.types import IntParameterType, StringParam
 from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities_from_data
 
 
+def write_execution_report(
+    warning_occurred: bool, context: ExecutionContext, entities: list[Any], schema: EntitySchema
+) -> None:
+    """Write the execution report depending on weather a KeyError occurred or not."""
+    if context:
+        if warning_occurred:
+            context.report.update(
+                ExecutionReport(
+                    entity_count=len(entities),
+                    operation_desc="entities created.",
+                    sample_entities=Entities(iter(entities[:5]), schema=schema),
+                    warnings=["KeyError"],
+                    summary=[
+                        (
+                            "KeyError",
+                            "At least some of the paths specified are empty in the result.",
+                        )
+                    ],
+                )
+            )
+        else:
+            context.report.update(
+                ExecutionReport(
+                    entity_count=len(entities),
+                    operation_desc="entities created.",
+                    sample_entities=Entities(iter(entities[:5]), schema=schema),
+                )
+            )
+
+
 @Plugin(
     label="Search for Logs",
-    description="Search and retrieve logs from a Logpoint service.",
+    description="Search and retrieve logs from a Logpoint SIEM system with flexible schema output.",
     documentation="""
-...
+This plugin integrates with Logpoint systems
+to search and retrieve log data based on custom queries.
+
+## Key Features
+
+- **Flexible Querying**: Execute custom Logpoint queries with configurable time ranges
+- **Repository Filtering**: Limit searches to specific log repositories
+- **Dynamic Schema**: Define output schema paths to structure the data as needed
+- **Preview Actions**: Inspect available output paths and repositories before execution
+
+## Configuration
+
+### Authentication
+Configure the connection to your Logpoint service using:
+- **Service URL**: The base URL of your Logpoint instance
+- **Username**: Service account username with appropriate permissions
+- **Secret Key**: API secret key for authentication
+
+### Query Parameters
+- **Query**: Logpoint search query syntax (see Logpoint documentation TODO ADD LINK)
+- **Time Range**: Relative time range (e.g., "Last 1 hour", "Last 24 hours")
+- **Limit**: Maximum number of log entries to retrieve
+- **Repositories**: Optional comma-separated list of specific repositories to search
+
+### Output Schema
+- **List of output paths**: Define specific fields to extract from logs
+- Use the "Preview output paths" action to discover possible, available fields
+- Leave empty to return all fields with automatic schema detection
+- Format: comma-separated paths
+- **Note:** It may occur that not all possible output paths are listed here. Logpoint follows
+standardized field naming conventions documented at:
+https://docs.logpoint.com/docs/logpoint-taxonomy-guideline/en/latest/Field%20naming%20convention.html
+A warning will be given if at least one of the created entities does not have a value at the given
+path.
+
+## Usage Example
+
+### Basic Log Search
+- Query: `norm_id=*`
+- Time Range: `Last 1 hour`
+- Limit: `1000`
+- Repositories: windows, linux
+- Output paths: (empty for all fields)
+
+Common fields include:
+- `source_address`: Source IP address
+- `destination_address`: Destination IP address
+- `user`: Username associated with the event
+- `log_ts`: The timestamp of a log.
+- `device_id`: The ID of a device.
+
+## Actions
+
+Use the plugin actions to explore and configure your searches:
+- **Preview output paths**: Run a test query to see available field paths
+- **Preview repositories**: List all accessible log repositories in your Logpoint instance
 """,
     icon=Icon(package=__package__, file_name="logpoint.svg"),
     parameters=[
         PluginParameter(
             name="base_url",
             label="Service URL",
-            description="The base URL of the service.",
+            description="Base URL of the Logpoint service.",
             default_value="https://demo.logpoint.com/",
         ),
         PluginParameter(
             name="account",
             label="Username",
             default_value="partner",
-            description="The username of the service account.",
+            description="Username for authenticating with the Logpoint service. "
+            "This account must have appropriate permissions to search logs and "
+            "access repositories.",
         ),
         PluginParameter(
             name="secret_key",
             label="Secret Key",
             param_type=PasswordParameterType(),
-            description="The secret key of the service account.",
+            description="API secret key for authentication. This is securely encrypted and used "
+            "to authenticate requests to the Logpoint service.",
         ),
         PluginParameter(
             name="query",
             label="Query",
-            description="The query to search logs.",
+            description="Logpoint search query using Logpoint query syntax. "
+            "Example: 'norm_id=*' or '| chart count() by device_ip'. ",
         ),
         PluginParameter(
             name="time_range",
             label="Time Range",
             default_value="Last 1 hour",
-            description="The time range to search logs.",
+            description="Relative time range for the search. "
+            "Common values: 'Last 1 hour', 'Last 24 hours', 'Last 7 days', 'Last 30 days'. ",
         ),
         PluginParameter(
             name="limit",
             label="Limit",
             param_type=IntParameterType(),
             default_value=1000,
-            description="The number of logs to return.",
+            description="Maximum number of log entries to retrieve. Must be a positive integer. ",
         ),
         PluginParameter(
             name="repos",
             label="Repositories",
-            description="Comma seperated list of repositories the query searches for.",
+            description="Comma-separated list of repository names to search. "
+            "Example: 'windows,linux,firewall'. Leave empty to search all accessible repositories. "
+            "Use the 'Preview repositories' action to see available options.",
             default_value="",
         ),
         PluginParameter(
             name="paths_list",
             label="List of output paths",
-            description="Comma seperated list of output paths. If any values are set here,"
-            "the output port will adjust according to those."
-            "Do not leave whitespaces between paths. Use the 'Preview output paths' action "
-            "to see possible values.",
+            description="Comma-separated list of field paths to include in output. "
+            "Example: 'source_address, destination_address, user, log_ts'. "
+            "If specified, creates a fixed output schema with only these fields. "
+            "Leave empty for automatic schema detection with all available fields. "
+            "Use 'Preview output paths' action to discover available field names. "
+            "See Logpoint field naming conventions at: "
+            "https://docs.logpoint.com/docs/logpoint-taxonomy-guideline/en/latest/Field%20naming%20convention.html",
             param_type=StringParameterType(),
             default_value="",
         ),
@@ -90,13 +185,16 @@ from cmem_plugin_base.dataintegration.utils.entity_builder import build_entities
         PluginAction(
             name="preview_output_paths",
             label="Preview output paths",
-            description="This action lists the potential paths for the query. "
-            "These can be used to specify the needed output schema paths.",
+            description="Executes the configured query with a limit of 1 to retrieve and display "
+            "available field paths in the result set. Use this to discover which fields "
+            "you can specify in the 'List of output paths' parameter for schema customization.",
         ),
         PluginAction(
             name="preview_repositories",
             label="Preview repositories",
-            description="This action lists the potential repositories for the query.",
+            description="Retrieves and displays all log repositories accessible with the "
+            "configured credentials. Use this to identify repository names for the "
+            "'Repositories' parameter to filter searches to specific log sources.",
         ),
     ],
 )
@@ -122,8 +220,8 @@ class RetrieveLogs(WorkflowPlugin):
         if limit < 1:
             raise ValueError("Limit must be positive.")
         self.limit = limit
-        self.repos = repos.split(",") if repos else []
-        self.paths_list = paths_list
+        self.repos = [repo.strip() for repo in repos.split(",")]
+        self.paths_list = [path_list.strip() for path_list in paths_list.split(",")]
         self.input_ports = FixedNumberOfInputs(ports=[])
         self.output_port = (
             FixedSchemaPort(schema=self.generate_schema())
@@ -140,25 +238,39 @@ class RetrieveLogs(WorkflowPlugin):
         search_id = self.search_start(
             query=self.query, time_range=self.time_range, limit=self.limit, repos=self.repos
         )
-        results = self.search_retrieve_logs(search_id, context)
+        results = self.search_retrieve_logs(search_id)
 
-        if not self.paths_list:
-            return build_entities_from_data(results)
+        if len(self.paths_list) == 1 and self.paths_list[0] == "":
+            build_entities = build_entities_from_data(results)
+            if context:
+                context.report.update(
+                    ExecutionReport(
+                        entity_count=len(results),
+                        operation_desc="entities created.",
+                    )
+                )
+            return build_entities
 
         schema = self.generate_schema()
         entities = []
+        warning_occurred = False
+
         for result in results:
             entity_uri = str(uuid.uuid4())
             values = []
             for path in schema.paths:
                 try:
                     values.append([str(result[path.path])])
-                except KeyError as e:
-                    raise KeyError("The output path list contains invalid paths.") from e
-            entities.append(Entity(uri=entity_uri, values=values))
+                except KeyError:
+                    values.append([""])
+                    warning_occurred = True
+                    entities.append(Entity(uri=entity_uri, values=values))
+
+        write_execution_report(warning_occurred, context, entities, schema)
+
         return Entities(entities=iter(entities), schema=schema)
 
-    def search_retrieve_logs(self, search_id: str, context: ExecutionContext | None) -> list[dict]:
+    def search_retrieve_logs(self, search_id: str) -> list[dict]:
         """Get search results for a search id"""
         url = self.base_url + "/getsearchlogs"
         request_data = {
@@ -182,14 +294,6 @@ class RetrieveLogs(WorkflowPlugin):
             response_data = response.json()
 
         rows: list[dict[str, Any]] = response_data["rows"]
-
-        if context:
-            context.report.update(
-                ExecutionReport(
-                    entity_count=(response_data["totalPages"]),
-                    operation_desc=f"pages were used and {len(rows)} entities created.",
-                )
-            )
 
         return rows
 
@@ -230,7 +334,7 @@ class RetrieveLogs(WorkflowPlugin):
         search_id = self.search_start(
             query=self.query, time_range=self.time_range, limit=1, repos=self.repos
         )
-        results = self.search_retrieve_logs(search_id, None)
+        results = self.search_retrieve_logs(search_id)
         result = results[0]
         for r in result:
             preview_string += f"- {r}\n"
@@ -255,5 +359,5 @@ class RetrieveLogs(WorkflowPlugin):
         """Generate the specified output schema."""
         return EntitySchema(
             type_uri="test",
-            paths=[EntityPath(split_path) for split_path in self.paths_list.split(",")],
+            paths=[EntityPath(split_path) for split_path in self.paths_list],
         )
