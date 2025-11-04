@@ -224,12 +224,12 @@ class RetrieveLogs(WorkflowPlugin):
         if limit < 1:
             raise ValueError("Limit must be positive.")
         self.limit = limit
-        self.repos = [repo.strip() for repo in repos.split(",")] if repos != "" else []
-        self.paths_list = [path_list.strip() for path_list in paths_list.split(",")] if paths_list != "" else []
+        self.repos = [repo.strip() for repo in repos.split(",")]
+        self.paths_list = [path_list.strip() for path_list in paths_list.split(",")]
         self.input_ports = FixedNumberOfInputs(ports=[])
         self.output_port = (
             FixedSchemaPort(schema=self.generate_schema())
-            if self.paths_list
+            if self.paths_list != [""]
             else UnknownSchemaPort()
         )
 
