@@ -1,6 +1,7 @@
 """Search Logs"""
 
 import json
+import time
 import uuid
 from collections.abc import Sequence
 from typing import Any
@@ -223,8 +224,8 @@ class RetrieveLogs(WorkflowPlugin):
         if limit < 1:
             raise ValueError("Limit must be positive.")
         self.limit = limit
-        self.repos = [repo.strip() for repo in repos.split(",")]
-        self.paths_list = [path_list.strip() for path_list in paths_list.split(",")]
+        self.repos = [repo.strip() for repo in repos.split(",")] if repos != "" else []
+        self.paths_list = [path_list.strip() for path_list in paths_list.split(",")] if paths_list != "" else []
         self.input_ports = FixedNumberOfInputs(ports=[])
         self.output_port = (
             FixedSchemaPort(schema=self.generate_schema())
@@ -296,6 +297,7 @@ class RetrieveLogs(WorkflowPlugin):
             response = requests.post(url=url, data=data, timeout=100)
             response.raise_for_status()
             response_data = response.json()
+            time.sleep(1)
 
         rows: list[dict[str, Any]] = response_data["rows"]
 
