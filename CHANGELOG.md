@@ -7,7 +7,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-TODO: add at least one Added, Changed, Deprecated, Removed, Fixed or Security section
+### Fixed
+
+- add a sleep between call to avoid API overload
+- fix a bug were the repos are not in the correct fetched
+
 
 ## [0.5.0] 2025-11-03
 
