@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/)
 
+## [0.5.1] 2025-11-07
+
+### Fixed
+
+- add a sleep between call to avoid API overload
+- fix a bug were the repos are not in the correct fetched
+
+
 ## [0.5.0] 2025-11-03
 
 ### Added
