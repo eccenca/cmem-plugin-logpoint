@@ -1,10 +1,13 @@
 """Search Logs"""
 
+import datetime
 import json
+import time
 import uuid
 from collections.abc import Sequence
 from typing import Any
 
+import jwt
 import requests
 from cmem_plugin_base.dataintegration.context import ExecutionContext, ExecutionReport
 from cmem_plugin_base.dataintegration.description import Icon, Plugin, PluginAction, PluginParameter
@@ -166,6 +169,7 @@ Use the plugin actions to explore and configure your searches:
             name="repos",
             label="Repositories",
             description="Comma-separated list of repository names to search. "
+            "Leave no trailing comma here. "
             "Example: 'windows,linux,firewall'. Leave empty to search all accessible repositories. "
             "Use the 'Preview repositories' action to see available options.",
             default_value="",
@@ -175,6 +179,7 @@ Use the plugin actions to explore and configure your searches:
             label="List of output paths",
             description="Comma-separated list of field paths to include in output. "
             "Example: 'source_address, destination_address, user, log_ts'. "
+            "Leave no trailing comma here. "
             "If specified, creates a fixed output schema with only these fields. "
             "Leave empty for automatic schema detection with all available fields. "
             "Use 'Preview output paths' action to discover available field names. "
@@ -228,7 +233,7 @@ class RetrieveLogs(WorkflowPlugin):
         self.input_ports = FixedNumberOfInputs(ports=[])
         self.output_port = (
             FixedSchemaPort(schema=self.generate_schema())
-            if self.paths_list
+            if self.paths_list != [""]
             else UnknownSchemaPort()
         )
 
@@ -264,11 +269,10 @@ class RetrieveLogs(WorkflowPlugin):
             for path in schema.paths:
                 try:
                     values.append([str(result[path.path])])
-                    entities.append(Entity(uri=entity_uri, values=values))
                 except KeyError:
                     values.append([""])
                     warning_occurred = True
-                    entities.append(Entity(uri=entity_uri, values=values))
+            entities.append(Entity(uri=entity_uri, values=values))
 
         write_execution_report(warning_occurred, context, entities, schema)
 
@@ -296,6 +300,7 @@ class RetrieveLogs(WorkflowPlugin):
             response = requests.post(url=url, data=data, timeout=100)
             response.raise_for_status()
             response_data = response.json()
+            time.sleep(1)
 
         rows: list[dict[str, Any]] = response_data["rows"]
 
@@ -340,18 +345,27 @@ class RetrieveLogs(WorkflowPlugin):
 
     def preview_repositories(self) -> str:
         """Preview repositories"""
-        url = self.base_url + "/getalloweddata"
+        iat = datetime.datetime.now(datetime.UTC)
+        exp = iat + datetime.timedelta(hours=1)
+        payload = {
+            "sub": self.account,
+            "scope": "logsource:read",
+            "iat": iat,
+            "exp": exp,
+            "iss": "self-signed",
+        }
+        token = jwt.encode(payload, self.secret_key, algorithm="HS256")
+        url = self.base_url + "/Repo/get_all_searchable_logpoint"
+        headers = {"Content-Type": "application/json", "Authorization": "Bearer " + token}
+        response = requests.post(url=url, headers=headers, json={}, data={}, timeout=100)
+        rows = response.json()["rows"]
+        repos = rows[0]["repos"]
 
-        data = {"username": self.account, "secret_key": self.secret_key, "type": "logpoint_repos"}
-
-        response = requests.post(url=url, data=data, timeout=100)
-        response_data = response.json()
-        allowed_repos = response_data["allowed_repos"]
-        repo_list = [repo["repo"] for repo in allowed_repos]
-        repo_count = len(repo_list)
-        preview_string = f"The following {repo_count} repositories are accessible:\n\n"
-        for repo in repo_list:
-            preview_string += f"- {repo},\n" if repo_list[-1] != repo else f"- {repo}\n"
+        preview_string = f"The following {len(repos)} repositories are accessible:\n\n"
+        for repo in repos:
+            preview_string += (
+                f"- {repo['address']},\n" if repos[-1] != repo else f"- {repo['address']}\n"
+            )
 
         return preview_string
 

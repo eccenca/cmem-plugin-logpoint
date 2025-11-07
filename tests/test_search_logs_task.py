@@ -116,7 +116,7 @@ def test_preview_repos(search_environment: SearchEnvironment) -> None:
     """Test start search"""
     plugin = search_environment.plugin
     preview = plugin.preview_repositories()
-    assert "EKSAuditLog" in preview
+    assert "127.0.0.1:5504/windows" in preview
 
 
 def test_negative_limit_init(search_environment: SearchEnvironment) -> None:
@@ -132,3 +132,21 @@ def test_negative_limit_init(search_environment: SearchEnvironment) -> None:
             paths_list="",
             query="",
         )
+
+
+def test_plugin_with_specified_repos(search_environment: SearchEnvironment) -> None:
+    """Test plugin with specific repos"""
+    plugin = search_environment.plugin
+    plugin.query = "| chart count() by device_ip"
+    plugin.repos = [
+        "127.0.0.1:5504/windows",
+        "127.0.0.1:5504/sap",
+        "127.0.0.1:5504/cloudwatch",
+        "127.0.0.1:5504/Proxy_WAF",
+        "127.0.0.1:5504/apache",
+        "127.0.0.1:5504/AgentX",
+        "127.0.0.1:5504/vmware",
+        "127.0.0.1:5504/cloud",
+    ]
+    result = plugin.execute(inputs=[], context=TestExecutionContext())
+    assert len(list(result.entities)) > 0
