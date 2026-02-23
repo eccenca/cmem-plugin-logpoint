@@ -119,21 +119,6 @@ def test_preview_repos(search_environment: SearchEnvironment) -> None:
     assert "127.0.0.1:5504/windows" in preview
 
 
-def test_negative_limit_init(search_environment: SearchEnvironment) -> None:
-    """Test negative limit"""
-    with pytest.raises(ValueError, match=r"Limit must be positive."):
-        RetrieveLogs(
-            base_url=search_environment.base_url,
-            account=search_environment.account,
-            secret_key=search_environment.secret_key,
-            time_range="Last 1 hour",
-            limit=-1,
-            repos="",
-            paths_list="",
-            query="",
-        )
-
-
 def test_plugin_with_specified_repos(search_environment: SearchEnvironment) -> None:
     """Test plugin with specific repos"""
     plugin = search_environment.plugin
@@ -150,3 +135,18 @@ def test_plugin_with_specified_repos(search_environment: SearchEnvironment) -> N
     ]
     result = plugin.execute(inputs=[], context=TestExecutionContext())
     assert len(list(result.entities)) > 0
+
+
+def test_negative_limit_init() -> None:
+    """Test negative limit"""
+    with pytest.raises(ValueError, match=r"Limit must be positive."):
+        RetrieveLogs(
+            base_url="https://example.com",
+            account="account",
+            secret_key="***",  # noqa: S106
+            time_range="Last 1 hour",
+            limit=-1,
+            repos="",
+            paths_list="",
+            query="",
+        )

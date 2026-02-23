@@ -9,7 +9,7 @@ This is a plugin for [eccenca](https://eccenca.com) [Corporate Memory](https://d
 ```
 cmemc admin workspace python install cmem-plugin-logpoint
 ```
-  
+[![workflow](https://github.com/eccenca/cmem-plugin-logpoint/actions/workflows/check.yml/badge.svg)](https://github.com/eccenca/cmem-plugin-logpoint/actions) [![pypi version](https://img.shields.io/pypi/v/cmem-plugin-logpoint)](https://pypi.org/project/cmem-plugin-logpoint) [![license](https://img.shields.io/pypi/l/cmem-plugin-logpoint)](https://pypi.org/project/cmem-plugin-logpoint)
 [![poetry][poetry-shield]][poetry-link] [![ruff][ruff-shield]][ruff-link] [![mypy][mypy-shield]][mypy-link] [![copier][copier-shield]][copier] 
 
 [cmem-link]: https://documentation.eccenca.com
