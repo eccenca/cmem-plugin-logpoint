@@ -128,7 +128,7 @@ Use the plugin actions to explore and configure your searches:
             name="base_url",
             label="Service URL",
             description="Base URL of the Logpoint service.",
-            default_value="https://demo.logpoint.com/",
+            default_value="https://demo.guardsix.com/",
         ),
         PluginParameter(
             name="account",
