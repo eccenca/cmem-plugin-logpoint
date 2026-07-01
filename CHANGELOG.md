@@ -7,7 +7,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-TODO: add at least one Added, Changed, Deprecated, Removed, Fixed or Security section
+### Changed
+
+- template update
+- default endpoint now https://demo.guardsix.com
+
 
 ## [0.5.1] 2025-11-07
 
