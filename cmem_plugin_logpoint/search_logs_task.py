@@ -209,7 +209,7 @@ Use the plugin actions to explore and configure your searches:
 class RetrieveLogs(WorkflowPlugin):
     """Search and retrieve logs from a Logpoint service"""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913 PLR0917
         self,
         base_url: str,
         account: str,
